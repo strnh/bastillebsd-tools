@@ -9,4 +9,6 @@
   for FreeBSD jail major version upgrade 
   -  limitaion: Not support Change with Major Version Upgrade.  (ex: Not for 14.x ->15.x)
 
+* jail_list.sh
 
+  for ansible + sshjail  
