@@ -3,5 +3,5 @@
 # usage: $0 $1 ($1= ansible inventory groupname)
 #
 
-/usr/local/bin/ansible 2>/dev/null -m raw  --become -a "export i={{inventory_hostname}} &&  /usr/local/bin/bastille \
-list jail | awk '{print \$1\"@\"ENVIRON[\"i\"] }'" $1 | grep -v callback | grep -v rc | grep -v closed | grep -v bastille
+/usr/local/bin/ansible 2>/dev/null -o -m raw  --become -a "export i={{inventory_hostname}} && jls -n \
+" -l "!*@*" $1 | awk '{ for(i=1;i<NF;i++) { if ($i~"^name") print substr($i,6)"@"$1 }}' 
