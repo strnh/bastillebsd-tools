@@ -9,20 +9,19 @@ NEW2=0.14
 RELS=1.0
 
 case $VERSION in 
-  $OLD)
+ $OLD)
    /usr/local/bin/bastille list -a | awk  '{ if ($1!="JID") print "bastille update " $1  }'  | /bin/sh -x
-  ;;
-  $NEW)
-  $NEW2)
-  
-  /usr/local/bin/bastille list -a | awk  '{ if ($1!="JID") print "bastille update " $5  }'  | /bin/sh -x
-  ;;
-
-  $RELS) 
-
+ ;;
+ $NEW)
+    /usr/local/bin/bastille list -a | awk  '{ if ($1!="JID") print "bastille update " $5  }'  | /bin/sh -x
+ ;;
+ $NEW2)
+   /usr/local/bin/bastille list -a | awk  '{ if ($1!="JID") print "bastille update " $5  }'  | /bin/sh -x
+ ;;
+ $RELS) 
    /usr/local/bin/bastille list | awk  '{ if ($1!="JID") print "bastille update " $2  }'  | /bin/sh -x
-
-esac
+ ;;
+ esac
 
 fi
 
