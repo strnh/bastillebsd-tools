@@ -23,5 +23,4 @@ case $VERSION in
  ;;
  esac
 
-fi
 
