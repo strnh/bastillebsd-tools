@@ -1,5 +1,9 @@
 #!/bin/sh
-/usr/local/bin/bastille list -a | env VERSION="14.2-RELEASE" awk  '{ if ($1!="JID") print "bastille upgrade  " $1 " " ENVIRON["VERSION"]  }'  | /bin/sh -x
+#
+#  for 1.0.x
+/usr/local/bin/bastille list | env VERSION=$(freebsd-version) awk  '{ if ($2!="JID") print "bastille upgrade  " $2 " " ENVIRON["VERSION"]  }'  | /bin/sh -x
 
-/usr/local/bin/bastille list -a | awk '{if ($1!="JID") print "bastille upgrade " $1 " install " } ' | /bin/sh -x
+/usr/local/bin/bastille list | awk '{if ($2!="JID") print "bastille upgrade " $2 " install " } ' | /bin/sh -x
+/usr/local/bin/bastille restart ALL
 
+/usr/local/bin/bastille list | awk '{if ($2!="JID") print "bastille upgrade "  $2 " install " } ' | /bin/sh -x
