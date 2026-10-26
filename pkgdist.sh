@@ -1,22 +1,55 @@
 #!/bin/sh
-if [ "$1" == '' ]; then
-  echo "Usage: " $0 " pkgs " 
-  exit 1
-fi 
+# usage: pkgpush.sh pkgname [pkgname ...]
+set -u
 
-pkgexists=$(pkg info -e $1) 
-if [ $? == 1 ]; then
- echo "pkg " $1 " not installed."
-fi
+[ $# -ge 1 ] || { echo "Usage: $0 pkgname [pkgname ...]" >&2; exit 1; }
+[ "$(id -u)" -eq 0 ] || { echo "must be root" >&2; exit 1; }
 
-PKG=$1
+WORK=$(mktemp -d /tmp/pkgpush.XXXXXX) || exit 1
+trap 'rm -rf "$WORK"' EXIT INT TERM
 
-mkdir /tmp/$$-work
-cd /tmp/$$-work
-DIR=$(pwd)
-PKGFILE=$(pkg create $PKG | awk '{print $NF}').pkg
-echo "1" | awk '{print "pwd" }' | sh -x
-jls -n | awk '{ for(i=1;i<NF;i++){ if (substr($i,1,4)=="name") { print $i }}}' | sed 's/name=//g' | awk -v pkgfile=$PKGFILE '{print "pwd && cp \"" pkgfile  "\"  /usr/local/bastille/jails/"$1"/root/root/; bastille pkg "$1" add ./"pkgfile }'  | sh -x 
+HOSTABI=$(pkg config abi)
 
-#
-rm -r $DIR
+for PKG in "$@"; do
+    if ! pkg info -e "$PKG"; then
+        echo "skip: $PKG is not installed on host" >&2
+        continue
+    fi
+    PKGNAME=$(pkg query '%n' "$PKG")
+    PKGVER=$(pkg query '%v' "$PKG")
+
+    pkg check -s "$PKGNAME" || { echo "WARN: checksum mismatch on host: $PKGNAME" >&2; }
+    pkg create -o "$WORK" "$PKGNAME" || { echo "create failed: $PKGNAME" >&2; continue; }
+    PKGFILE="$WORK/$PKGNAME-$PKGVER.pkg"
+    [ -f "$PKGFILE" ] || { echo "not found: $PKGFILE" >&2; continue; }
+    BASE=${PKGFILE##*/}
+
+    jls name path | while read -r J JPATH; do
+        if ! pkg -j "$J" info -e "$PKGNAME" </dev/null; then
+            echo "skip: $J ($PKGNAME not installed)"
+            continue
+        fi
+
+        JABI=$(pkg -j "$J" config abi </dev/null)
+        if [ "$JABI" != "$HOSTABI" ]; then
+            echo "skip: $J ABI mismatch ($JABI != $HOSTABI)"
+            continue
+        fi
+
+        JVER=$(pkg -j "$J" query '%v' "$PKGNAME" </dev/null)
+        case $(pkg version -t "$JVER" "$PKGVER") in
+            '<') ;;
+            '=') echo "skip: $J already $PKGNAME-$PKGVER"; continue ;;
+            '>') echo "skip: $J has newer $PKGNAME-$JVER"; continue ;;
+        esac
+
+        echo "==> $J: $PKGNAME $JVER -> $PKGVER"
+        cp "$PKGFILE" "$JPATH/tmp/$BASE" || { echo "FAILED copy: $J" >&2; continue; }
+        if pkg -j "$J" add "/tmp/$BASE" </dev/null; then
+            echo "OK: $J"
+        else
+            echo "FAILED: $J" >&2
+        fi
+        rm -f "$JPATH/tmp/$BASE"
+    done
+done
